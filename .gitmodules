@@ -1,0 +1,3 @@
+[submodule "ECG/Source/ThirdParty/EnTT/entt"]
+	path = ECG/Source/ThirdParty/EnTT/entt
+	url = https://github.com/skypjack/entt.git
