@@ -11,9 +11,5 @@
 		}
 	],
 	"Plugins": [
-		{
-			"Name": "ObjectBrowser",
-			"Enabled": true
-		}
 	]
 }
