@@ -11,5 +11,11 @@ public class ECGEditorTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.V5;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_4;
 		ExtraModuleNames.Add("ECG");
+		RegisterModulesCreatedByRider();
+	}
+
+	private void RegisterModulesCreatedByRider()
+	{
+		ExtraModuleNames.AddRange(new string[] { "Grid", "Shop", "EntityStorage", "EntityTraits", "EntityRepresentations", "Common", "ENTT_Common", "Game", "Cards" });
 	}
 }
