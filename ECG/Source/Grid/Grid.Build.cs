@@ -11,7 +11,8 @@ public class Grid : ModuleRules
             {
                 "Core", 
                 "EnTT", 
-                "ENTT_Common",
+                "ENTT_Common", 
+                "StructUtils",
             }
         );
 

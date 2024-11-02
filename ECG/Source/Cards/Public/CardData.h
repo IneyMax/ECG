@@ -8,18 +8,13 @@
 #include "Engine/DataAsset.h"
 #include "CardData.generated.h"
 
-/**
- * 
- */
+
 UCLASS()
 class CARDS_API UCardData : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FCard Data;
-
 	UPROPERTY(EditAnywhere)
-	TArray<FInstancedStruct> Test;
+	TArray<FInstancedStruct> InstancedStructData;
 };

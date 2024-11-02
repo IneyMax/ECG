@@ -2,8 +2,8 @@
 
 
 #include "PlayerStateBase.h"
-#include "CardData.h"
 #include "Card.h"
+#include "CardData.h"
 #include "CellMeshComponent.h"
 #include "EntityWrapper.h"
 #include "GameEntitySubsystem.h"
@@ -12,6 +12,9 @@
 
 
 DEFINE_LOG_CATEGORY(LogPlayerStateBase);
+
+
+TMap<UScriptStruct*, FUntypedEmplacer*> FUntypedEmplaceRegistry::UntypedEmplacers {};
 
 
 entt::entity Cards::SelectRandomCardEntity(entt::registry& InRegistry)
@@ -55,11 +58,20 @@ void Creatures::CalculateResultDamage(const entt::registry& InRegistry)
 	UE_LOGFMT(LogPlayerStateBase, Error, "ResultDamage: {ResultDamage}", ResultDamage);
 }
 
+
+void APlayerStateBase::BeginPlay()
+{
+	Super::BeginPlay();
+	FUntypedEmplaceRegistry::RegisterUntypedEmplacerType<FCard>();
+	FUntypedEmplaceRegistry::RegisterUntypedEmplacerType<FCreature>();
+}
+
 void APlayerStateBase::CreateNewCard()
 {
 	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
 	FEntityWrapper NewCellEntity = Registry.create();
-	Registry.emplace<FCard>(NewCellEntity, CardData->Data);
+	Registry.emplace<FCard>(NewCellEntity);
+	Emplace(Registry, NewCellEntity, CardData->InstancedStructData[0]);
 }
 
 void APlayerStateBase::AddCreatureToRandomCard()
@@ -82,10 +94,6 @@ void APlayerStateBase::PlayCard()
 
 void APlayerStateBase::CalculateResultDamage()
 {
-	TestRegistry = &UGameEntitySubsystem::GetRegistry(this);
-	entt::entity RandomCard = Cards::SelectRandomCardEntity(*TestRegistry);
-	entt::entity RandomCell = Grid::ChooseRandomEvenEmptyCell(*TestRegistry);
-	
 	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
 	Creatures::CalculateResultDamage(Registry);
 }

@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "CellMeshComponent.h"
+#include "InstancedStruct.h"
 #include "entity/registry.hpp"
+#include "Logging/StructuredLog.h"
 #include "GridActor.generated.h"
 
 
