@@ -16,6 +16,9 @@ public class ECGEditorTarget : TargetRules
 
 	private void RegisterModulesCreatedByRider()
 	{
-		ExtraModuleNames.AddRange(new string[] { "Grid", "Shop", "EntityStorage", "EntityTraits", "EntityRepresentations", "Common", "ENTT_Common", "Game", "Cards" });
+		ExtraModuleNames.AddRange(new string[]
+		{
+			"Common"
+		});
 	}
 }

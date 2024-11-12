@@ -10,6 +10,8 @@ public class Common : ModuleRules
             new string[]
             {
                 "Core", 
+                "StructUtils", 
+                "EnTT",
             }
         );
 
