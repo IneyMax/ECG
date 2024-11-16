@@ -15,5 +15,5 @@ class COMMON_API UGameEntityData : public UPrimaryDataAsset
 
 public:
 	UPROPERTY(EditAnywhere)
-	TArray<FInstancedStruct> InstancedStructData;
+	TArray<FInstancedStruct> DefaultEntityData;
 };

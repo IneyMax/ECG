@@ -2,11 +2,11 @@
 
 
 #include "PlayerStateBase.h"
-#include "Card.h"
 #include "CellMeshComponent.h"
 #include "EntityWrapper.h"
 #include "GameEntityData.h"
 #include "GameEntitySubsystem.h"
+#include "GameEntityTypes.h"
 #include "GridActor.h"
 #include "RegistryWrapper.h"
 #include "Logging/StructuredLog.h"
@@ -19,54 +19,78 @@ DEFINE_LOG_CATEGORY(LogPlayerStateBase);
 TMap<UScriptStruct*, FUntypedWrapper*> FUntypedRegistryWrapper::UntypedWrappers {};
 
 
-entt::entity Cards::SelectRandomCardEntity(entt::registry& InRegistry)
+bool Cards::SelectRandomCard(entt::registry& InRegistry, FEntityWrapper& OutEntity)
 {
-	TArray<entt::entity> AllCards;
-	auto View = InRegistry.view<FCard>();
-	
-	// use a range-for
-	for (const auto& [Entity, Card]: View.each())
-	{
+	TArray<FEntityWrapper> AllCards;
+	InRegistry.view<FCard>().each([&AllCards](auto Entity, FCard& Card)  
+	{  
 		AllCards.Add(Entity);
-	}
+	});
+	
 	if (!AllCards.IsEmpty())
 	{
-		return AllCards[FMath::RandRange(0, AllCards.Num() - 1)];
+		OutEntity = AllCards[FMath::RandRange(0, AllCards.Num() - 1)];
+		return true;
 	}
-	return entt::null;
+	return false;
 }
 
-void Cards::PlayCardToCell(entt::registry& InRegistry, const entt::entity InCard, const entt::entity InCell)
+void Cards::AddEntityToPlace(entt::registry& InRegistry, const entt::entity InEntity, const entt::entity InPlace)
 {
-	const TFunction<void(FGridCell& Cell)> CellPatch = [&](FGridCell& Cell)
+	if (FPlaceability* Placeability = InRegistry.try_get<FPlaceability>(InEntity))
 	{
-		UE_LOGFMT(LogPlayerStateBase, Log, "Patch {InPlayedEntity}, Index_X:{Index_X}, Index_Y:{Index_Y}",
-				  static_cast<uint32_t>(InCard), Cell.Index_X, Cell.Index_Y);
+		const TFunction<void(FEntityPlace& InEntityPlace)> PlacePatch = [&](FEntityPlace& InEntityPlace)
+		{
+			// UE_LOGFMT(LogPlayerStateBase, Log, "Patch {InPlayedEntity}, Index_X:{Index_X}, Index_Y:{Index_Y}",
+			// 		  static_cast<uint32_t>(InEntity), Cell.Index_X, Cell.Index_Y);
 		
-		Cell.EntityContains.AddUnique(FEntityWrapper(InCard));
-		InRegistry.emplace<FOnGrid>(InCard, InCell);
-	};
-	InRegistry.patch<FGridCell>(InCell, CellPatch);
+			InEntityPlace.EntityContains.AddUnique(InEntity);
+		};
+		InRegistry.patch<FEntityPlace>(InPlace, PlacePatch);
+	
+		const TFunction<void(FPlaceability& InPlaceability)> PlaceabilityPatch = [&](FPlaceability& InPlaceability)
+		{
+			// UE_LOGFMT(LogPlayerStateBase, Log, "Patch {InPlayedEntity}, Index_X:{Index_X}, Index_Y:{Index_Y}",
+			// 		  static_cast<uint32_t>(InEntity), Cell.Index_X, Cell.Index_Y);
+		
+			InPlaceability.OccupiedPlaces.AddUnique(InPlace);
+		};
+		InRegistry.patch<FPlaceability>(InEntity, PlaceabilityPatch);
+	
+		InRegistry.emplace<FPlayed>(InEntity);
+	}
+	else
+	{
+		UE_LOGFMT(LogPlayerStateBase, Error, "Fail AddEntityToPlace: Entity: {InEntity} not has FPlaceability",
+				  static_cast<uint32_t>(InEntity));
+	}
 }
 
 void Creatures::CalculateResultDamage(const entt::registry& InRegistry)
 {
 	// use a callback
-	auto View = InRegistry.view<FCreature, FOnGrid>();
+	auto View = InRegistry.view<FCreature, FGridCell>();
 	int32 ResultDamage = 0;
-	View.each([&ResultDamage](const FCreature& Creature, const FOnGrid& Grid)
+	View.each([&ResultDamage](const FCreature& Creature, const FGridCell& Grid)
 	{
 		ResultDamage += Creature.Attack;
 	});
-	UE_LOGFMT(LogPlayerStateBase, Error, "ResultDamage: {ResultDamage}", ResultDamage);
+	UE_LOGFMT(LogPlayerStateBase, Log, "ResultDamage: {ResultDamage}", ResultDamage);
 }
 
+
+APlayerStateBase::APlayerStateBase()
+{
+	FUntypedRegistryWrapper::RegisterUntypedWrapperType<FCard>();
+	FUntypedRegistryWrapper::RegisterUntypedWrapperType<FGameEntity>();
+	FUntypedRegistryWrapper::RegisterUntypedWrapperType<FCreature>();
+	FUntypedRegistryWrapper::RegisterUntypedWrapperType<FPlaceability>();
+	FUntypedRegistryWrapper::RegisterUntypedWrapperType<FEntityPlace>();
+}
 
 void APlayerStateBase::BeginPlay()
 {
 	Super::BeginPlay();
-	FUntypedRegistryWrapper::RegisterUntypedWrapperType<FCard>();
-	FUntypedRegistryWrapper::RegisterUntypedWrapperType<FCreature>();
 }
 
 void APlayerStateBase::CreateNewCard()
@@ -75,10 +99,9 @@ void APlayerStateBase::CreateNewCard()
 	FEntityWrapper NewCellEntity = Registry.create();
 	int32 RandDataIndex = FMath::RandRange(0, GameEntityData.Num() - 1);
 	auto RandData = GameEntityData[RandDataIndex];
-	for (auto Data : RandData->InstancedStructData)
+	for (auto Data : RandData->DefaultEntityData)
 	{
 		RegistryWrapper::Emplace(Registry, NewCellEntity, Data);
-		OnCreateNewCard.Broadcast(NewCellEntity, RandData->InstancedStructData);
 		UE_LOGFMT(LogPlayerStateBase, Log, "StructName:{Struct}", Data.GetScriptStruct()->GetName());
 	}
 }
@@ -86,9 +109,15 @@ void APlayerStateBase::CreateNewCard()
 void APlayerStateBase::PlayCard()
 {
 	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
-	entt::entity RandomCard = Cards::SelectRandomCardEntity(Registry);
-	entt::entity RandomCell = Grid::ChooseRandomEmptyCell(Registry);
-	Cards::PlayCardToCell(Registry, RandomCard, RandomCell);
+	FEntityWrapper SelectedRandomCard;
+	Cards::SelectRandomCard(Registry, SelectedRandomCard);
+	FEntityWrapper SelectedRandomEmptyCell;
+	Grid::SelectRandomEmptyCell(Registry, SelectedRandomEmptyCell);
+
+	if (SelectedRandomCard && SelectedRandomEmptyCell)
+	{
+		Cards::AddEntityToPlace(Registry, SelectedRandomCard, SelectedRandomEmptyCell);
+	}
 }
 
 void APlayerStateBase::CalculateResultDamage()

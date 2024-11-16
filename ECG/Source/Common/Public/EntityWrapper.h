@@ -17,7 +17,7 @@ struct COMMON_API FEntityWrapper
 {
 	GENERATED_BODY()
 	
-	FEntityWrapper(): entity(entt::null), EntityIndex(INDEX_NONE) {}
+	FEntityWrapper(): entity(entt::null), EntityIndex(0) {}
 	FEntityWrapper(const FEntityWrapper& Other) = default;
 	FEntityWrapper(FEntityWrapper&& Other) = default;
 	
@@ -70,6 +70,11 @@ struct COMMON_API FEntityWrapper
 	friend uint32 GetTypeHash(const FEntityWrapper& Arg)
 	{
 		return HashCombine(GetTypeHash(Arg.entity), GetTypeHash(Arg.EntityIndex));
+	}
+
+	operator bool() const
+	{
+		return entity != entt::null;
 	}
 	
 	operator entt::entity() const

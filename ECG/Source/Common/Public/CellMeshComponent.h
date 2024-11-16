@@ -22,20 +22,8 @@ struct FGridCell
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	int32 Index_Y;
 
-	UPROPERTY()
-	UCellMeshComponent* MeshComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CellMesh", meta = (AllowPrivateAccess = "true"))
-	TArray<FEntityWrapper> EntityContains;
-};
-
-USTRUCT(Blueprintable, BlueprintType)
-struct FOnGrid
-{
-	GENERATED_BODY()
-	
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-	FEntityWrapper OccupiedCell;
+	UCellMeshComponent* MeshComponent;
 };
 
 

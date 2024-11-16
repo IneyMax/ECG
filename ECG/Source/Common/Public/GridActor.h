@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CellMeshComponent.h"
 #include "EntityWrapper.h"
+#include "GameEntityTypes.h"
 #include "entity/registry.hpp"
 #include "GridActor.generated.h"
 
@@ -13,10 +14,10 @@ class UCellMeshComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGridActor, Log, All);
 
+
 namespace Grid
 {
-	FEntityWrapper ChooseRandomEmptyCell(entt::registry& InRegistry);
-	FEntityWrapper ChooseRandomEvenEmptyCell(entt::registry& InRegistry);
+	bool SelectRandomEmptyCell(entt::registry& InRegistry, FEntityWrapper& OutEntity);
 }
 
 
@@ -28,7 +29,7 @@ class COMMON_API AGridActor : public AActor
 	AGridActor();
 	
 	virtual void BeginPlay() override;
-
+	
 protected:
 	UFUNCTION(BlueprintCallable)
 	void CreateNewCell(int32 CellIndexX, int32 CellIndexY, const FVector& InLocation, const FRotator& InRotation,
@@ -36,11 +37,14 @@ protected:
 	
 	UFUNCTION(BlueprintCallable)
 	void GetCellData(int32 InEntity, FGridCell& OutData);
-
+	
 	UFUNCTION(CallInEditor, BlueprintCallable)
-	int32 ChooseRandomEvenEmptyCell();
+	void OnUpdate_EntityPlace(const FEntityWrapper& InEntity);
 
 protected:
+	UFUNCTION(BlueprintNativeEvent)
+	void K2_OnUpdateEntityPlace(const FEntityWrapper& InEntity, const FGridCell& GridCell);
+	
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, meta=(AllowPrivateAccess = "true"))
 	TSubclassOf<UCellMeshComponent> CellClass;
 

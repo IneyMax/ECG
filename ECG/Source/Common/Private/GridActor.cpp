@@ -5,47 +5,32 @@
 
 #include "CellMeshComponent.h"
 #include "GameEntitySubsystem.h"
+#include "GameEntityTypes.h"
 #include "Logging/StructuredLog.h"
 
 
 DEFINE_LOG_CATEGORY(LogGridActor);
 
 
-FEntityWrapper Grid::ChooseRandomEmptyCell(entt::registry& InRegistry)
+bool Grid::SelectRandomEmptyCell(entt::registry& InRegistry, FEntityWrapper& OutEntity)
 {
 	TArray<FEntityWrapper> EmptyCells;
-	auto View = InRegistry.view<FGridCell>();
-	for(const auto& [Entity, GridCell]: View.each())
-	{
-		if (GridCell.EntityContains.IsEmpty())
+	InRegistry.view<FGridCell, FEntityPlace>().each([&EmptyCells](auto Entity, FGridCell& GridCell, FEntityPlace& EntityPlace)  
+	{  
+		if (EntityPlace.EntityContains.IsEmpty())
 		{
 			EmptyCells.Add(Entity);
 		}
-	}
-	return EmptyCells[FMath::RandRange(0, EmptyCells.Num() - 1)];
-}
+	});
 
-FEntityWrapper Grid::ChooseRandomEvenEmptyCell(entt::registry& InRegistry)
-{
-	TArray<FEntityWrapper> EvenEmptyCells;
-	auto View = InRegistry.view<FGridCell>();
-
-	// use a callback
-	View.each([](const auto &GridCell) { /* ... */ });
-
-	// use an extended callback
-	View.each([](const auto Entity, const auto &GridCell) { /* ... */ });
-	
-	// use a range-for
-	for(const auto& [Entity, GridCell]: View.each())
+	if (!EmptyCells.IsEmpty())
 	{
-		if (GridCell.Index_X &1 && GridCell.Index_Y &1)
-		{
-			EvenEmptyCells.Add(Entity);
-		}
+		OutEntity = EmptyCells[FMath::RandRange(0, EmptyCells.Num() - 1)];
+		return true;
 	}
-	return EvenEmptyCells[FMath::RandRange(0, EvenEmptyCells.Num() - 1)];
+	return false;
 }
+
 
 AGridActor::AGridActor()
 {
@@ -55,11 +40,26 @@ AGridActor::AGridActor()
 void AGridActor::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
+	Registry.on_update<FEntityPlace>().connect<&AGridActor::OnUpdate_EntityPlace>(this);
+}
+
+void AGridActor::OnUpdate_EntityPlace(const FEntityWrapper& InEntity)
+{
+	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
+	if (FGridCell* GridCell = Registry.try_get<FGridCell>(InEntity))
+	{
+		K2_OnUpdateEntityPlace(InEntity, *GridCell);
+	}
+}
+
+void AGridActor::K2_OnUpdateEntityPlace_Implementation(const FEntityWrapper& InEntity, const FGridCell& GridCell)
+{
 }
 
 void AGridActor::CreateNewCell(const int32 CellIndexX, const int32 CellIndexY, const FVector& InLocation,
-	const FRotator& InRotation, const FVector& InScale)
+                               const FRotator& InRotation, const FVector& InScale)
 {
 	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
 	FEntityWrapper NewCellEntity = Registry.create();
@@ -73,6 +73,7 @@ void AGridActor::CreateNewCell(const int32 CellIndexX, const int32 CellIndexY, c
 	CellComponent->Entity = NewCellEntity;
 	Cells.Add(CellComponent);
 	Registry.emplace<FGridCell>(NewCellEntity, CellIndexX, CellIndexY, CellComponent);
+	Registry.emplace<FEntityPlace>(NewCellEntity);
 }
 
 void AGridActor::GetCellData(int32 InEntity, FGridCell& OutData)
@@ -80,15 +81,8 @@ void AGridActor::GetCellData(int32 InEntity, FGridCell& OutData)
 	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
 	if (FGridCell* CellData = Registry.try_get<FGridCell>(static_cast<entt::entity>(InEntity)))
 	{
-		UE_LOGFMT(LogGridActor, Log, "GetCellData:\n "
-							"X:{X},\n Y:{Y}"",\n IsEmpty:{IsEmpty}",
-			CellData->Index_X, CellData->Index_Y, CellData->EntityContains.IsEmpty());
+		UE_LOGFMT(LogGridActor, Log, "GetCellData:\n X:{X},\n Y:{Y}",
+			CellData->Index_X, CellData->Index_Y);
 		OutData = *CellData;
 	}
-}
-
-int32 AGridActor::ChooseRandomEvenEmptyCell()
-{
-	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
-	return Grid::ChooseRandomEvenEmptyCell(Registry);
 }
