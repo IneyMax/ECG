@@ -19,7 +19,7 @@ DEFINE_LOG_CATEGORY(LogPlayerStateBase);
 TMap<UScriptStruct*, FUntypedWrapper*> FUntypedRegistryWrapper::UntypedWrappers {};
 
 
-bool Cards::SelectRandomCard(entt::registry& InRegistry, FEntityWrapper& OutEntity)
+bool GameEntities::SelectRandomCard(entt::registry& InRegistry, FEntityWrapper& OutEntity)
 {
 	TArray<FEntityWrapper> AllCards;
 	InRegistry.view<FCard>().each([&AllCards](auto Entity, FCard& Card)  
@@ -35,7 +35,7 @@ bool Cards::SelectRandomCard(entt::registry& InRegistry, FEntityWrapper& OutEnti
 	return false;
 }
 
-void Cards::AddEntityToPlace(entt::registry& InRegistry, const entt::entity InEntity, const entt::entity InPlace)
+void GameEntities::AddEntityToPlace(entt::registry& InRegistry, const entt::entity InEntity, const entt::entity InPlace)
 {
 	if (FPlaceability* Placeability = InRegistry.try_get<FPlaceability>(InEntity))
 	{
@@ -66,16 +66,27 @@ void Cards::AddEntityToPlace(entt::registry& InRegistry, const entt::entity InEn
 	}
 }
 
-void Creatures::CalculateResultDamage(const entt::registry& InRegistry)
+void GameEntities::CalculateResultDamage(const entt::registry& InRegistry)
 {
-	// use a callback
-	auto View = InRegistry.view<FCreature, FGridCell>();
 	int32 ResultDamage = 0;
-	View.each([&ResultDamage](const FCreature& Creature, const FGridCell& Grid)
+	InRegistry.view<FCreature, FPlayed>().each([&ResultDamage](const FCreature& Creature)
 	{
 		ResultDamage += Creature.Attack;
 	});
 	UE_LOGFMT(LogPlayerStateBase, Log, "ResultDamage: {ResultDamage}", ResultDamage);
+}
+
+void GameEntities::AddAllPlaceabilityEntitiesToGrid(const entt::registry& Registry)
+{
+	FEntityWrapper SelectedRandomCard;
+	// SelectRandomCard(Registry, SelectedRandomCard);
+	FEntityWrapper SelectedRandomEmptyCell;
+	// Grid::SelectRandomEmptyCell(Registry, SelectedRandomEmptyCell);
+	Ent
+	Registry.view<FCreature, FPlaceability>(entt::exclude<FPlayed>).each([](const FCreature& Creature)
+	{
+		ResultDamage += Creature.Attack;
+	});
 }
 
 
@@ -93,15 +104,15 @@ void APlayerStateBase::BeginPlay()
 	Super::BeginPlay();
 }
 
-void APlayerStateBase::CreateNewCard()
+void APlayerStateBase::CreateNewGameEntity()
 {
 	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
-	FEntityWrapper NewCellEntity = Registry.create();
+	FEntityWrapper NewGameEntity = Registry.create();
 	int32 RandDataIndex = FMath::RandRange(0, GameEntityData.Num() - 1);
 	auto RandData = GameEntityData[RandDataIndex];
 	for (auto Data : RandData->DefaultEntityData)
 	{
-		RegistryWrapper::Emplace(Registry, NewCellEntity, Data);
+		RegistryWrapper::Emplace(Registry, NewGameEntity, Data);
 		UE_LOGFMT(LogPlayerStateBase, Log, "StructName:{Struct}", Data.GetScriptStruct()->GetName());
 	}
 }
@@ -110,20 +121,25 @@ void APlayerStateBase::PlayCard()
 {
 	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
 	FEntityWrapper SelectedRandomCard;
-	Cards::SelectRandomCard(Registry, SelectedRandomCard);
+	GameEntities::SelectRandomCard(Registry, SelectedRandomCard);
 	FEntityWrapper SelectedRandomEmptyCell;
 	Grid::SelectRandomEmptyCell(Registry, SelectedRandomEmptyCell);
-
 	if (SelectedRandomCard && SelectedRandomEmptyCell)
 	{
-		Cards::AddEntityToPlace(Registry, SelectedRandomCard, SelectedRandomEmptyCell);
+		GameEntities::AddEntityToPlace(Registry, SelectedRandomCard, SelectedRandomEmptyCell);
 	}
+}
+
+void APlayerStateBase::PlayAllCreatures()
+{
+	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
+	GameEntities::AddAllPlaceabilityEntitiesToGrid(Registry);
 }
 
 void APlayerStateBase::CalculateResultDamage()
 {
 	entt::registry& Registry = UGameEntitySubsystem::GetRegistry(this);
-	Creatures::CalculateResultDamage(Registry);
+	GameEntities::CalculateResultDamage(Registry);
 }
 
 

@@ -12,16 +12,12 @@ class UGameEntityData;
 DECLARE_LOG_CATEGORY_EXTERN(LogPlayerStateBase, Log, All);
 
 
-namespace Cards
+namespace GameEntities
 {
 	bool SelectRandomCard(entt::registry& InRegistry, FEntityWrapper& OutEntity);
 	void AddEntityToPlace(entt::registry& InRegistry, entt::entity InEntity, entt::entity InPlace);
-}
-
-
-namespace Creatures
-{
 	void CalculateResultDamage(const entt::registry& InRegistry);
+	void AddAllPlaceabilityEntitiesToGrid(const entt::registry& Registry);
 }
 
 
@@ -37,11 +33,12 @@ public:
 
 protected:
 	UFUNCTION(CallInEditor, BlueprintCallable)
-	void CreateNewCard();
+	void CreateNewGameEntity();
 	
 	UFUNCTION(CallInEditor, BlueprintCallable)
 	void PlayCard();
-	
+	void PlayAllCreatures();
+
 	UFUNCTION(CallInEditor, BlueprintCallable)
 	void CalculateResultDamage();
 
