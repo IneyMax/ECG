@@ -15,7 +15,7 @@ public class ECG : ModuleRules
 			"Engine", 
 			"InputCore", 
 			"EnhancedInput", 
-			"Entt",
+			"EnTT",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
